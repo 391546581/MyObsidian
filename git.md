@@ -16,11 +16,10 @@ git remote add origin https://github.com/391546581/MyObsidian.git
 git push -u origin main
 
 
+git remote add origin https://github.com/391546581/MyEnglishRoots.git
+ 
 
-
-Thought for <1s
-
-
+怎么开始打造自己的知识图谱呢，或者有没有现成的obsidian结构可以参考呢
 
 
 打造知识图谱不是一蹴而就的，最忌讳的是“先建一堆空文件夹”。Obsidian 的核心力量在于**由下而上（Bottom-up）**地生长，而不是传统的预设分类。
