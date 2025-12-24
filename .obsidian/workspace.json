@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "git.md",
+                "file": "00_Daily/2025-12-24.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "git"
+              "title": "2025-12-24"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "git.md",
+                "file": "00_Daily/2025-12-24.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for git"
+              "title": "Backlinks for 2025-12-24"
             }
           },
           {
@@ -197,6 +197,15 @@
   "active": "af5b3bc97c5c928c",
   "lastOpenFiles": [
     "Obsidian特色.md",
+    "MoonTV_与移动端观影指南.md",
+    "_Templates",
+    "05_Inbox",
+    "04_Archive",
+    "03_Resource",
+    "02_Area",
+    "01_Project",
+    "00_Daily/2025-12-24.md",
+    "00_Daily",
     "git.md",
     "新建文本文档.txt"
   ]
