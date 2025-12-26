@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "git.md",
+                "file": "00_Daily/2025-12-24.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for git"
+              "title": "Backlinks for 2025-12-24"
             }
           },
           {
@@ -194,9 +194,10 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "af5b3bc97c5c928c",
+  "active": "235acf73cdbcdf4f",
   "lastOpenFiles": [
     "00_Daily/2025-12-24.md",
+    "git.md",
     "现代化的词根搜索工具.md",
     "Obsidian特色.md",
     "MoonTV_与移动端观影指南.md",
@@ -207,7 +208,6 @@
     "02_Area",
     "01_Project",
     "00_Daily",
-    "git.md",
     "新建文本文档.txt"
   ]
 }

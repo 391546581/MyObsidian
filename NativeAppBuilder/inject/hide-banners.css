@@ -1,0 +1,25 @@
+/* 这是一个通用的注入 CSS，用于隐藏移动端网页常见的“下载 App”横幅 */
+
+/* 隐藏常见横幅关键词 */
+*[class*="download-banner"],
+*[class*="app-banner"],
+*[class*="open-in-app"],
+*[id*="download-banner"],
+.open-app-btn,
+.mobile-app-bar {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    pointer-events: none !important;
+}
+
+/* 针对特定网站的优化：小红书 */
+.note-detail-mask,
+.note-list-mask {
+    display: none !important;
+}
+
+/* 针对特定网站的优化：微博 */
+.m-tab-bar {
+    display: none !important;
+}
