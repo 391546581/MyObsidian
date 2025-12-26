@@ -43,3 +43,12 @@
 
 ### 注入 CSS 说明
 在 `inject/hide-banners.css` 中我们定义了一些通用的“隐藏下载 App 提示横幅”的规则，打包时会被自动加载。
+
+
+$Apps = @(
+    @{ name="YouTubeKids";   url="https://www.youtubekids.com/"; ua=$AndroidUA },
+    @{ name="LittleRedBook"; url="https://www.xiaohongshu.com/"; ua=$AndroidUA },
+    @{ name="WeiboMobile";    url="https://m.weibo.cn/";         ua=$AndroidUA },
+    @{ name="Instagram";      url="https://www.instagram.com/";  ua=$AndroidUA },
+    @{ name="ChatGPT";        url="https://chatgpt.com/";        ua=$AndroidUA }
+)
