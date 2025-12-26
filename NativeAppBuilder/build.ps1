@@ -1,56 +1,31 @@
-# NativeAppBuilder 打包脚本 (PC 宽屏优化版)
+# NativeAppBuilder Build Script
 
-# 设置控制台输出编码为 UTF8，解决中文乱码问题
-$OutputEncoding = [System.Text.Encoding]::UTF8
+# 1. Encoding
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# 1. 定义伪装环境
-# 手机版 UA (用于小红书、微博等)
-$PhoneUA = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
-# 平板版 UA (用于 YouTube Kids 等需要横屏的网站)
-$TabletUA = "Mozilla/5.0 (iPad; CPU OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1"
+# 2. Paths
+$Root = $PSScriptRoot
+if (!$Root) { $Root = Get-Location }
+$Dist = Join-Path $Root "dist"
+$CSS = Join-Path $Root "inject\hide-banners.css"
+$JS = Join-Path $Root "inject\fix-interaction.js"
 
-$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
-if (-not $ScriptRoot) { $ScriptRoot = $PSScriptRoot }
-if (-not $ScriptRoot) { $ScriptRoot = Get-Location }
+# 3. Create Dist
+if (!(Test-Path $Dist)) { New-Item -ItemType Directory -Path $Dist -Force }
 
-$OutDir = Join-Path $ScriptRoot "dist"
-$InjectCSS = Join-Path $ScriptRoot "inject\hide-banners.css"
-
-# 2. 如果输出目录不存在则创建
-if (-not (Test-Path $OutDir)) {
-    New-Item -ItemType Directory -Path $OutDir
-}
-
-# 3. 定义要打包的应用列表
-# 这里的 w, h 是初始窗口尺寸
+# 4. Apps
 $Apps = @(
-    # @{ name="YouTubeKids";   url="https://www.youtubekids.com/"; ua=$TabletUA; w="1280"; h="800" },
-    @{ name="LittleRedBook"; url="https://www.xiaohongshu.com/"; ua=$PhoneUA;  w="550";  h="900" },
-    @{ name="WeiboMobile";    url="https://m.weibo.cn/";         ua=$PhoneUA;  w="480";  h="850" }
+    @{ n="LittleRedBook"; u="https://www.xiaohongshu.com/"; w=550; h=900 }
 )
 
-# 4. 执行循环打包
-foreach ($app in $Apps) {
-    Write-Host "------------------------------------" -ForegroundColor Yellow
-    Write-Host "正在打包: $($app.name)" -ForegroundColor Cyan
-    
-    # 执行打包命令
-    # --out: 统一输出到 dist
-    # --maximize: 运行后可以全屏
-    # --honest: 尝试不隐藏浏览器身份（部分网站需要）
-    nativefier --name $app.name `
-               --user-agent $app.ua `
-               --inject $InjectCSS `
-               --out $OutDir `
-               --single-instance `
-               --internal-urls ".*" `
-               --width $app.w `
-               --height $app.h `
-               --maximize `
-               $app.url
+$UA = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+
+# 5. Build
+Set-Location $Dist
+foreach ($a in $Apps) {
+    Write-Host ">>> Building: $($a.n)" -ForegroundColor Cyan
+    nativefier --name "$($a.n)" --user-agent "$UA" --inject "$CSS" --inject "$JS" --out "." --overwrite --width $($a.w) --height $($a.h) "$($a.u)"
 }
 
-Write-Host "------------------------------------" -ForegroundColor Yellow
-Write-Host "打包任务已完成！所有程序存放在: $OutDir" -ForegroundColor Green
+Write-Host "Done!" -ForegroundColor Green
 pause

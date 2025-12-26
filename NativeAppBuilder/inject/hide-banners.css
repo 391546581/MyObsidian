@@ -23,3 +23,58 @@
 .m-tab-bar {
     display: none !important;
 }
+
+/* 强制启用滚动修复 */
+html,
+body,
+#app,
+#global,
+.layout.limit {
+    overflow: auto !important;
+    height: auto !important;
+    position: relative !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+/* 彻底隐藏小红书特有的拦截类 */
+.reds-modal,
+.reds-mask,
+.reds-alert-mask,
+.login-modal,
+.login-container,
+.mask-paper {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* 解除 html 上的锁定类 */
+html.reds-lock-scroll {
+    overflow: auto !important;
+}
+
+/* 终极绝招：让所有可能的通用遮罩层失去点击拦截能力 */
+div[class*="mask"],
+div[class*="Mask"],
+div[class*="modal"] {
+    pointer-events: none !important;
+    background: transparent !important;
+}
+
+/* 确保主内容区域可以点击 */
+#app,
+.main-container,
+.note-container {
+    pointer-events: auto !important;
+}
+
+/* 移除各种全屏遮罩，这些通常是导致不能滚动的元凶 */
+div[class*="Mask"],
+div[class*="Modal"],
+div[class*="Overlay"],
+.modal-open,
+.main-wrapper.frozen {
+    display: none !important;
+    pointer-events: none !important;
+}
