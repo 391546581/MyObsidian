@@ -23,7 +23,7 @@ $DesktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 $Apps = @(
     @{ n="LittleRedBook"; u="https://www.xiaohongshu.com/"; ua=$PhoneUA;   w=550;  h=900;  inject=$true },
     @{ n="WeiboMobile";   u="https://m.weibo.cn/";         ua=$PhoneUA;   w=480;  h=850;  inject=$false },
-    @{ n="YouTubeKids";   u="https://www.youtubekids.com/"; ua=$TabletUA;  w=1280; h=800;  inject=$false },
+    # @{ n="YouTubeKids";   u="https://www.youtubekids.com/"; ua=$DesktopUA; w=1280; h=800;  inject=$false },
     @{ n="Grok";          u="https://grok.com/";            ua=$DesktopUA; w=1280; h=900;  inject=$false },
     @{ n="TikTok";        u="https://www.tiktok.com/";      ua=$DesktopUA; w=1280; h=800;  inject=$true },
     @{ n="Douyin";        u="https://www.douyin.com/";      ua=$DesktopUA; w=1280; h=800;  inject=$true }
