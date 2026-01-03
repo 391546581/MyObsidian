@@ -24,6 +24,19 @@
     display: none !important;
 }
 
+/* 针对特定网站的优化：TikTok & Douyin */
+[class*="DivBannerContainer"],
+[class*="DivLoginContainer"],
+[class*="BannerContainer"],
+[class*="DownloadButton"],
+.tiktok-emv965-DivBannerContainer,
+.download-app-button,
+.login-guide-container,
+.login-mask,
+.dy-account-close {
+    display: none !important;
+}
+
 /* 强制启用滚动修复 */
 html,
 body,
