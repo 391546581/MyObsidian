@@ -11,10 +11,14 @@
             "id": "af5b3bc97c5c928c",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "05_Inbox/软件转硬件思路.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "软件转硬件思路"
             }
           }
         ]
@@ -190,9 +194,11 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "af5b3bc97c5c928c",
+  "active": "235acf73cdbcdf4f",
   "lastOpenFiles": [
     "05_Inbox/arm编译及驱动开发基础.md",
+    "05_Inbox/软件转硬件思路.md",
+    "05_Inbox/软件转硬件思路",
     "05_Inbox/arm编译及驱动开发基础.md.md",
     "03_Tools/英语学习工具整理.md",
     "Pasted image 20260105093636.png",
@@ -224,7 +230,6 @@
     "04_Archive",
     "03_Resource",
     "02_Area",
-    "01_Project",
-    "00_Daily"
+    "01_Project"
   ]
 }
