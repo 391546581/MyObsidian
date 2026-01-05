@@ -176,7 +176,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 722.5
+    "width": 332.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -192,6 +192,10 @@
   },
   "active": "af5b3bc97c5c928c",
   "lastOpenFiles": [
+    "05_Inbox/arm编译及驱动开发基础.md.md",
+    "03_Tools/英语学习工具整理.md",
+    "Pasted image 20260105093636.png",
+    "00_Daily/2025-12-24.md",
     "Templates/Template-AI-Learning-Framework.md",
     "03_Tools/工具索引.md",
     "03_Tools/AI交互式学习框架.md",
@@ -212,7 +216,6 @@
     "03_Tools",
     "MoonTV_与移动端观影指南.md",
     "git.md",
-    "00_Daily/2025-12-24.md",
     "现代化的词根搜索工具.md",
     "Obsidian特色.md",
     "_Templates",
