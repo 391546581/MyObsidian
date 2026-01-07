@@ -180,7 +180,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 332.5
+    "width": 689.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -194,11 +194,11 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "235acf73cdbcdf4f",
+  "active": "af5b3bc97c5c928c",
   "lastOpenFiles": [
+    "05_Inbox/如何理解AI中的数学基础.md.md",
     "05_Inbox/如何理解AI中的数学基础.md",
     "05_Inbox/软件转硬件思路.md",
-    "05_Inbox/如何理解AI中的数学基础.md.md",
     "05_Inbox/Linux命令.md",
     "05_Inbox/arm编译及驱动开发基础.md",
     "05_Inbox/软件转硬件思路",
