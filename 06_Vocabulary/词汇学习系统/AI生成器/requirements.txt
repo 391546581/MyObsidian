@@ -1,0 +1,35 @@
+# Python依赖包列表
+# 安装: pip install -r requirements.txt
+
+# 核心依赖
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# 可选依赖 (用于高级功能)
+
+# PDF处理 (从真题PDF提取词汇)
+# PyPDF2>=3.0.0
+# pdfplumber>=0.10.0
+
+# 图片处理
+# Pillow>=10.0.0
+
+# 字幕解析
+# pysrt>=1.1.2
+
+# 数据分析
+# pandas>=2.0.0
+
+# 进度条
+# tqdm>=4.65.0
+
+# 日志
+# loguru>=0.7.0
+
+# 本地LLM (可选)
+# ollama>=0.1.0
+# transformers>=4.30.0
+
+# 语音合成 (可选)
+# pyttsx3>=2.90
+# gTTS>=2.3.0
