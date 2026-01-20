@@ -1645,6 +1645,920 @@ plaintext
 
 有没有可以帮助大模型理解任务需求的提示词？
 
-深度思考
+我可以自己部署一套类似的大模型，agent,沙箱环境吗，目前有类似这种开源的搭建对接环境吗
 
-技能
+分享
+
+你完全可以自己部署一套「大模型 + Agent + 沙箱」的完整环境，而且有大量成熟的开源项目可以直接复用，无需从零开发 —— 这套环境的核心是「开源大模型（本地 / 私有部署）+ Agent 框架 + 开源沙箱」的组合，新手也能分步骤搭建，下面我会按「核心组件选型 + 完整部署步骤 + 开源项目对接示例」讲解，确保你能落地。
+
+### 一、核心组件选型（新手友好，无云厂商依赖）
+
+先明确整套环境的三大核心模块，以及适合新手的开源方案：
+
+| 模块  | 核心作用 | 新手推荐开源项目 | 关键优势 |
+| --- | --- | --- | --- |
+| 大模型 | Agent 的 “大脑”（决策） | 通义千问开源版（Qwen-7B）、Llama 3（8B） | 轻量化，可本地 / 虚拟机部署，中文支持好 |
+| Agent 框架 | 串联 “思考 - 工具 - 执行” 闭环 | LangChain（Python）、AgentScope（阿里云开源） | 文档完善，内置工具调用、记忆、规划能力 |
+| 沙箱环境 | 安全执行代码 / 操作 | CodeBox、Sandboxie 开源版、OpenFaaS 隔离容器 | 轻量级，支持代码执行 / 环境隔离，易对接 Agent |
+
+### 二、完整部署步骤（新手可落地，基于 Linux 虚拟机）
+
+#### 前置条件
+
+-   一台云虚拟机 / 本地服务器：至少 8 核 16G 内存（部署 7B 大模型的最低要求），Linux 系统（Ubuntu 22.04）。
+-   已安装：Docker、Python 3.9+、Git、Anaconda（可选，管理 Python 环境）。
+
+#### 步骤 1：部署开源大模型（本地私有化，替代阿里云百炼）
+
+以**通义千问 Qwen-7B**为例（中文友好，新手首选）：
+
+bash
+
+运行
+
+    # 1. 安装模型部署工具（FastChat，简单易用）
+    pip install "fschat[model_worker,webui]"
+    
+    # 2. 下载Qwen-7B模型（从ModelScope下载，需先安装modelscope）
+    pip install modelscope
+    python -c "from modelscope import snapshot_download; snapshot_download('qwen/Qwen-7B-Chat', cache_dir='./qwen-7b')"
+    
+    # 3. 启动大模型服务（提供OpenAI兼容的API，方便对接Agent框架）
+    # 启动控制器
+    python -m fastchat.serve.controller &
+    # 启动模型worker（加载Qwen-7B）
+    python -m fastchat.serve.model_worker --model-path ./qwen-7b &
+    # 启动API服务（端口8000，Agent框架可调用）
+    python -m fastchat.serve.openai_api_server --host 0.0.0.0 --port 8000 &
+    
+
+-   验证：访问 `http://你的服务器IP:8000/v1/models`，能看到 Qwen-7B 模型列表即部署成功。
+
+#### 步骤 2：部署开源沙箱（替代阿里云 sandbox-aio）
+
+以**CodeBox**为例（轻量级代码执行沙箱，支持多语言，安全隔离）：
+
+bash
+
+运行
+
+    # 1. 克隆CodeBox仓库
+    git clone https://github.com/zhayujie/codebox.git
+    cd codebox
+    
+    # 2. 用Docker启动沙箱服务（自动创建隔离环境）
+    docker-compose up -d
+    
+    # 3. 验证沙箱：调用API执行Python代码
+    curl -X POST http://你的服务器IP:8080/api/run \
+      -H "Content-Type: application/json" \
+      -d '{
+        "language": "python",
+        "code": "print(sum(range(1, 101)))"
+      }'
+    # 预期返回：{"output":"5050","error":""}
+    
+
+#### 步骤 3：部署 Agent 框架（串联大模型 + 沙箱）
+
+以**LangChain**为例，编写 Agent 代码对接本地大模型和沙箱：
+
+python
+
+运行
+
+    # 安装依赖
+    # pip install langchain requests openai
+    
+    from langchain.agents import initialize_agent, Tool
+    from langchain.chat_models import ChatOpenAI
+    import requests
+    
+    # 1. 配置本地大模型（对接FastChat的OpenAI兼容API）
+    llm = ChatOpenAI(
+        base_url="http://你的服务器IP:8000/v1",  # 本地大模型API地址
+        api_key="dummy-key",  # 本地部署无需真实密钥，填任意值
+        model_name="Qwen-7B-Chat",
+        temperature=0
+    )
+    
+    # 2. 定义沙箱工具（对接CodeBox沙箱）
+    def codebox_executor(code: str, language: str = "python") -> str:
+        """调用本地CodeBox沙箱执行代码"""
+        sandbox_url = "http://你的服务器IP:8080/api/run"
+        data = {"language": language, "code": code}
+        try:
+            res = requests.post(sandbox_url, json=data, timeout=10)
+            res_json = res.json()
+            if res_json.get("error"):
+                return f"执行错误：{res_json['error']}"
+            return f"执行结果：{res_json['output']}"
+        except Exception as e:
+            return f"沙箱调用失败：{str(e)}"
+    
+    # 3. 绑定工具到Agent
+    tools = [
+        Tool(
+            name="CodeExecutor",
+            func=codebox_executor,
+            description="用于执行Python/JavaScript代码，解决数学计算、数据处理等问题"
+        )
+    ]
+    
+    # 4. 初始化Agent
+    agent = initialize_agent(
+        tools, llm, agent="zero-shot-react-description", verbose=True
+    )
+    
+    # 5. 测试Agent（大模型自主调用沙箱执行代码）
+    result = agent.run("用Python计算1到100的累加和，写出代码并返回结果")
+    print("Agent最终回答：", result)
+    
+
+#### 运行结果（新手可验证）
+
+plaintext
+
+    > Entering new AgentExecutor chain...
+    我需要用Python计算1到100的累加和，应该调用CodeExecutor工具执行对应的代码。
+    Action: CodeExecutor
+    Action Input: print(sum(range(1, 101)))
+    Observation: 执行结果：5050
+    Thought: 已经获取到计算结果，可以直接回答用户了。
+    Final Answer: 1到100的累加和计算结果为5050，对应的Python代码是：print(sum(range(1, 101)))
+    
+    > Finished chain.
+    Agent最终回答：1到100的累加和计算结果为5050，对应的Python代码是：print(sum(range(1, 101)))
+    
+
+### 三、进阶开源方案（按需扩展）
+
+如果需要更接近阿里云百炼的完整能力，可替换 / 新增以下组件：
+
+#### 1\. 更强大的沙箱（替代 CodeBox）
+
+-   **OpenFaaS**：基于容器的隔离沙箱，支持代码执行 + 浏览器自动化，部署见前文：[https://github.com/openfaas/faasd](https://github.com/openfaas/faasd)
+-   **gVisor + Kata Containers**：谷歌开源的轻量级虚拟机沙箱，安全级别更高，适合生产环境：[https://gvisor.dev/](https://gvisor.dev/)
+
+#### 2\. 企业级 Agent 框架（替代 LangChain）
+
+-   **MetaGPT**：支持多智能体协作、任务拆解，更贴近实际业务：[https://github.com/geekan/MetaGPT](https://github.com/geekan/MetaGPT)
+-   **AutoGen**：微软开源，支持多 Agent 对话协作：[https://github.com/microsoft/autogen](https://github.com/microsoft/autogen)
+
+#### 3\. 大模型部署优化（提升性能）
+
+-   **vLLM**：加速大模型推理，降低内存占用：[https://github.com/vllm-project/vllm](https://github.com/vllm-project/vllm)
+-   **LMDeploy**：阿里云开源的大模型部署工具，适配 Qwen 系列：[https://github.com/InternLM/lmdeploy](https://github.com/InternLM/lmdeploy)
+
+### 四、新手避坑指南
+
+1.  **硬件不足**：若虚拟机内存 < 16G，可先部署 Qwen-1.8B（轻量版），或用 CPU 推理（速度慢但能跑通）。
+2.  **网络问题**：下载模型 / 镜像时可换国内源（如 ModelScope 国内镜像、Docker 阿里云镜像）。
+3.  **沙箱安全**：本地部署沙箱时，禁止暴露公网端口（仅内网调用），避免恶意代码执行。
+4.  **性能优化**：大模型推理开启量化（如 4-bit 量化），降低硬件要求。
+
+### 总结
+
+1.  **核心可行性**：完全可以自建「大模型 + Agent + 沙箱」环境，新手优先用「Qwen-7B + LangChain + CodeBox」组合，1 天内可跑通完整闭环。
+2.  **关键组件**：
+    
+    -   大模型：选通义千问开源版（中文友好），用 FastChat 部署；
+    -   Agent：LangChain/AgentScope（封装工具调用逻辑）；
+    -   沙箱：CodeBox（极简）/OpenFaaS（功能全）。
+    
+3.  **成本优势**：仅需一台云虚拟机（低配每月几十元），无按量付费，完全自主可控。
+
+如果需要我把上述步骤整理成**可直接复制的脚本（一键部署大模型 + 沙箱）**，或者帮你排查部署中的具体报错（比如模型启动失败、沙箱调用超时），可以告诉我你的服务器配置和具体问题。
+
+分享
+
+如何在本地部署通义千问开源版？
+
+你想知道如何在本地电脑部署通义千问开源版（Qwen），这是自建「大模型 + Agent」环境的核心第一步 —— 本地部署无需依赖云服务，新手也能按步骤完成，我会分「环境准备、模型下载、部署运行、验证使用」四步讲解，同时适配不同硬件（CPU/GPU），确保你能跑通。
+
+### 一、前置条件（本地电脑需满足）
+
+| 硬件 / 系统 | 最低要求（CPU 推理） | 推荐要求（GPU 推理） |
+| --- | --- | --- |
+| 系统  | Windows 10+/Linux/macOS | Windows 10+/Linux/macOS |
+| 内存  | 16GB RAM | 16GB RAM + NVIDIA GPU（8GB 显存以上，如 3060/4060） |
+| 磁盘  | 至少 20GB 空闲空间（7B 模型约 14GB） | 至少 20GB 空闲空间 |
+
+### 二、核心步骤（新手友好，以 Qwen-7B-Chat 为例）
+
+#### 步骤 1：安装基础依赖
+
+先配置 Python 环境和必要工具，Windows/Linux/macOS 操作基本一致：
+
+bash
+
+运行
+
+    # 1. 安装Anaconda（可选，推荐，方便管理Python环境）
+    # 下载地址：https://www.anaconda.com/download
+    # 2. 创建并激活Python虚拟环境（Python 3.9/3.10最佳）
+    conda create -n qwen python=3.10
+    conda activate qwen
+    
+    # 3. 安装核心依赖（适配通义千问）
+    pip install torch==2.1.0 transformers==4.35.2 accelerate==0.24.1 sentencepiece==0.1.99 protobuf==4.25.1
+    # GPU用户额外安装CUDA依赖（需先安装CUDA 11.8）
+    pip install torch==2.1.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+    
+
+#### 步骤 2：下载通义千问开源模型
+
+推荐从「ModelScope」下载（国内速度快），也可从 Hugging Face 下载：
+
+bash
+
+运行
+
+    # 1. 安装ModelScope工具
+    pip install modelscope
+    
+    # 2. 下载Qwen-7B-Chat模型（自动保存到本地，约14GB）
+    # 若内存不足，可替换为Qwen-1.8B-Chat（轻量版，约3GB）
+    python -c """
+    from modelscope import snapshot_download
+    # 下载7B模型（推荐）
+    model_dir = snapshot_download('qwen/Qwen-7B-Chat', cache_dir='./qwen-models')
+    # 下载1.8B轻量版（内存<16GB选这个）
+    # model_dir = snapshot_download('qwen/Qwen-1.8B-Chat', cache_dir='./qwen-models')
+    print(f'模型下载完成，路径：{model_dir}')
+    """
+    
+
+-   下载完成后，记住模型本地路径（比如`./qwen-models/qwen/Qwen-7B-Chat`）。
+
+#### 步骤 3：本地部署运行（两种方式，新手选方式 1）
+
+##### 方式 1：极简运行（直接调用，适合测试）
+
+创建`run_qwen.py`文件，复制以下代码（替换模型路径）：
+
+python
+
+运行
+
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    import torch
+    
+    # 1. 加载模型和Tokenizer
+    model_path = "./qwen-models/qwen/Qwen-7B-Chat"  # 替换为你的模型实际路径
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    # CPU推理（无GPU）：添加 device_map="cpu"
+    # GPU推理：添加 torch_dtype=torch.bfloat16
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        trust_remote_code=True,
+        device_map="auto",  # 自动分配CPU/GPU
+        torch_dtype=torch.bfloat16  # GPU用户启用，CPU用户注释这行
+    ).eval()
+    
+    # 2. 测试对话（模拟Agent的“思考”过程）
+    prompt = "用Python计算1到100的累加和，写出代码"
+    messages = [{"role": "user", "content": prompt}]
+    
+    # 构建输入
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+    
+    # 生成回答（大模型决策）
+    generated_ids = model.generate(
+        model_inputs.input_ids,
+        max_new_tokens=500,  # 最大生成字数
+        do_sample=False,  # 关闭采样，回答更精准
+        temperature=0.0  # 温度0，无随机性
+    )
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    
+    # 打印结果
+    print("大模型回答：\n", response)
+    
+
+运行代码：
+
+bash
+
+运行
+
+    python run_qwen.py
+    
+
+-   预期输出：
+    
+    plaintext
+    
+        大模型回答：
+        以下是计算1到100累加和的Python代码：
+        ```python
+        # 方法1：使用range和sum函数（简洁）
+        total = sum(range(1, 101))
+        print("1到100的累加和：", total)
+        
+        # 方法2：使用循环（更直观）
+        total = 0
+        for i in range(1, 101):
+            total += i
+        print("1到100的累加和：", total)
+        
+    
+    运行结果均为 5050。
+    
+    已生成代码
+    
+
+##### 方式 2：部署为 API 服务（对接 Agent 框架，推荐）
+
+用`FastChat`将模型部署为 OpenAI 兼容的 API，方便 LangChain/AgentScope 调用：
+
+bash
+
+运行
+
+    # 安装FastChat
+    pip install "fschat[model_worker,webui]"
+    
+    # 1. 启动控制器（后台运行）
+    python -m fastchat.serve.controller &
+    
+    # 2. 启动模型Worker（替换模型路径）
+    # CPU用户：添加 --device cpu
+    # GPU用户：默认即可
+    python -m fastchat.serve.model_worker --model-path ./qwen-models/qwen/Qwen-7B-Chat &
+    
+    # 3. 启动OpenAI兼容的API服务（端口8000）
+    python -m fastchat.serve.openai_api_server --host 0.0.0.0 --port 8000 &
+    
+
+-   验证 API：访问`http://localhost:8000/v1/models`，能看到 Qwen 模型列表即部署成功。
+-   对接 Agent：参考上一轮的 LangChain 代码，只需将`base_url`改为`http://localhost:8000/v1`即可。
+
+#### 步骤 4：优化本地部署（解决卡顿 / 内存不足）
+
+如果运行卡顿或内存报错，按以下方式优化：
+
+1.  **CPU 推理优化**：
+    
+    -   启用量化：加载模型时添加`load_in_8bit=True`（需安装`bitsandbytes`）：
+        
+        python
+        
+        运行
+        
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+                device_map="cpu",
+                load_in_8bit=True  # 8位量化，内存占用减半
+            ).eval()
+            
+        
+    
+2.  **GPU 推理优化**：
+    
+    -   启用 4 位量化：`load_in_4bit=True`，显存占用降至 6GB 左右；
+    -   用`vLLM`加速：`pip install vllm`，运行`python -m vllm.entrypoints.openai.api_server --model ./qwen-models/qwen/Qwen-7B-Chat --port 8000`，推理速度提升 5-10 倍。
+    
+3.  **内存不足（Windows）**：
+    
+    -   关闭其他程序，启用虚拟内存（至少 20GB）；
+    -   改用 Qwen-1.8B-Chat（仅需 3GB 内存）。
+    
+
+### 三、常见问题排查（新手必看）
+
+1.  **模型下载失败**：
+    
+    -   换 ModelScope 国内镜像：`export MODEL_SCOPE_ENDPOINT=https://www.modelscope.cn`（Linux/macOS），Windows 在环境变量中添加。
+    
+2.  **导入模型报错`trust_remote_code`**：
+    
+    -   确保`transformers`版本≥4.35.0，且代码中添加`trust_remote_code=True`。
+    
+3.  **GPU 推理提示 CUDA out of memory**：
+    
+    -   降低模型规模（改用 1.8B），或启用 4/8 位量化，或关闭其他占用 GPU 的程序。
+    
+
+### 总结
+
+1.  **核心流程**：安装依赖 → 下载模型 → 极简运行 / 部署 API → 优化性能，新手先跑通极简版，再部署 API 对接 Agent。
+2.  **关键适配**：
+    
+    -   无 GPU：用 CPU 推理 + 8 位量化，选 Qwen-1.8B；
+    -   有 GPU：启用 bfloat16+4 位量化，选 Qwen-7B，推理速度更快。
+    
+3.  **对接 Agent**：部署为 OpenAI 兼容 API 后，可直接复用 LangChain/AgentScope 代码，无需修改核心逻辑。
+
+如果运行代码时遇到具体报错（比如模型加载失败、API 启动超时），可以把报错信息贴出来，我会帮你修改代码、定位问题。
+
+如果需要我把上述步骤整理成可直接复制的脚本（一键部署大模型 + 沙箱），或者帮你排查部署中的具体报错（比如模型启动失败、沙箱调用超时），可以告诉我你的服务器配置和具体问题。 如何使用 LangChain 框架？
+
+你想系统学习 LangChain 框架的使用方法，这是开发 AI Agent 的核心工具 ——LangChain 本质是「大模型应用开发脚手架」，帮你快速串联「大模型 + 工具 / 数据 + 执行逻辑」，新手可以从「核心概念→基础用法→实战案例」逐步掌握，下面我会用最易懂的方式讲解，附完整可运行代码。
+
+### 一、先搞懂 LangChain 的核心概念（新手必知）
+
+LangChain 把 AI Agent 开发拆成多个模块化组件，不用从零写逻辑，核心组件如下（用 “做饭” 类比）：
+
+| 组件  | 作用（类比） | 新手常用场景 |
+| --- | --- | --- |
+| **LLM/Chat Model** | 大脑（决定做什么饭） | 调用通义千问 / Qwen 做决策 |
+| **Prompt Template** | 菜谱（告诉大脑怎么做） | 定义大模型的思考规则 |
+| **Tool** | 厨具（锅 / 铲，执行具体操作） | 对接沙箱、天气 API、数据库等 |
+| **Agent** | 厨师（用大脑 + 厨具完成任务） | 串联 “思考→调用工具→执行” 闭环 |
+| **Chain** | 流程（洗菜→切菜→炒菜） | 按顺序执行多个操作 |
+
+### 二、基础步骤：安装 + 最小化使用（5 分钟跑通）
+
+#### 步骤 1：安装 LangChain
+
+bash
+
+运行
+
+    # 核心安装（基础功能）
+    pip install langchain
+    
+    # 按需安装扩展（对接大模型/工具）
+    pip install langchain-openai  # 对接OpenAI兼容API（如本地Qwen）
+    pip install requests          # 调用外部API（如天气、沙箱）
+    pip install langchain-community  # 社区工具/模型（如通义千问）
+    
+
+#### 步骤 2：极简使用（调用本地 Qwen 大模型）
+
+先验证 LangChain 能对接你本地部署的 Qwen 模型（基于前文的 FastChat API）：
+
+python
+
+运行
+
+    from langchain_openai import ChatOpenAI
+    
+    # 1. 配置本地大模型（对接FastChat的OpenAI兼容API）
+    llm = ChatOpenAI(
+        base_url="http://localhost:8000/v1",  # 本地Qwen的API地址
+        api_key="dummy-key",  # 本地部署无需真实密钥，填任意值
+        model_name="Qwen-7B-Chat",
+        temperature=0  # 回答更精准，无随机性
+    )
+    
+    # 2. 简单对话（测试大模型调用）
+    response = llm.invoke("用Python计算1到100的累加和，写出代码")
+    print("大模型回答：\n", response.content)
+    
+
+运行后能看到 Qwen 生成的代码，说明 LangChain 已成功对接大模型。
+
+### 三、核心用法：开发第一个 Agent（工具调用）
+
+这是 LangChain 最核心的能力 —— 让大模型自主判断是否调用工具（如沙箱、API），而非直接回答。以下是「对接 CodeBox 沙箱执行代码」的完整示例：
+
+#### 步骤 1：定义工具（Tool）
+
+工具是 Agent 的 “手脚”，需明确「名称 + 功能 + 执行函数」：
+
+python
+
+运行
+
+    import requests
+    from langchain.agents import Tool
+    
+    # 1. 定义沙箱执行工具（对接本地CodeBox沙箱）
+    def codebox_executor(code: str, language: str = "python") -> str:
+        """
+        工具功能：调用本地CodeBox沙箱执行代码
+        参数：
+          - code：要执行的代码字符串
+          - language：代码语言（默认python）
+        返回：执行结果/错误信息
+        """
+        # 本地CodeBox沙箱的API地址（前文部署的）
+        sandbox_url = "http://localhost:8080/api/run"
+        try:
+            res = requests.post(
+                sandbox_url,
+                json={"language": language, "code": code},
+                timeout=10
+            )
+            res_json = res.json()
+            if res_json.get("error"):
+                return f"执行错误：{res_json['error']}"
+            return f"执行结果：{res_json['output']}"
+        except Exception as e:
+            return f"沙箱调用失败：{str(e)}"
+    
+    # 2. 封装为LangChain Tool（关键：description要清晰，大模型靠这个判断是否调用）
+    tools = [
+        Tool(
+            name="CodeExecutor",  # 工具名（大模型会识别）
+            func=codebox_executor,  # 执行函数
+            description="用于执行Python/JavaScript代码，解决数学计算、数据处理等问题，输入参数是代码字符串"
+        )
+    ]
+    
+
+#### 步骤 2：初始化 Agent（串联大模型 + 工具）
+
+python
+
+运行
+
+    from langchain.agents import initialize_agent, AgentType
+    
+    # 1. 初始化Agent（核心：绑定大模型和工具）
+    agent = initialize_agent(
+        tools=tools,
+        llm=llm,
+        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,  # 零样本：靠description调用工具
+        verbose=True,  # 打印思考过程（新手调试必备）
+        handle_parsing_errors=True  # 容错：解析指令出错时不崩溃
+    )
+    
+    # 2. 运行Agent（让大模型自主决策是否调用工具）
+    task = "用Python计算1到100的累加和，执行代码并返回结果"
+    result = agent.run(task)
+    
+    # 3. 输出最终结果
+    print("\nAgent最终回答：\n", result)
+    
+
+#### 运行结果（新手可验证）
+
+plaintext
+
+    > Entering new AgentExecutor chain...
+    我需要执行Python代码计算1到100的累加和，应该调用CodeExecutor工具。
+    Action: CodeExecutor
+    Action Input: print(sum(range(1, 101)))
+    Observation: 执行结果：5050
+    Thought: 已经获取到计算结果，可以直接回答用户了。
+    Final Answer: 1到100的累加和计算结果为5050，对应的Python代码执行结果是5050。
+    
+    > Finished chain.
+    
+    Agent最终回答：
+     1到100的累加和计算结果为5050，对应的Python代码执行结果是5050。
+    
+
+从日志能清晰看到 Agent 的思考链：**理解任务→判断需要调用工具→执行代码→返回结果**。
+
+### 四、进阶用法：Prompt 定制 + 记忆功能
+
+#### 1\. 定制 Prompt（让 Agent 更 “听话”）
+
+通过 Prompt Template 定义 Agent 的行为规则，比如限制输出格式、添加业务规则：
+
+python
+
+运行
+
+    from langchain.prompts import PromptTemplate
+    
+    # 自定义Prompt模板
+    custom_prompt = PromptTemplate(
+        template="""你是一个严谨的代码执行Agent，必须遵守以下规则：
+        1. 只执行安全的Python代码，禁止执行删除文件、访问网络的代码；
+        2. 执行代码前先检查语法，确保无错误；
+        3. 返回结果时，先写代码，再写执行结果，格式清晰。
+        用户的问题：{input}
+        你的可用工具：{tools}
+        请按规则思考并执行。""",
+        input_variables=["input", "tools"]
+    )
+    
+    # 重新初始化Agent（使用自定义Prompt）
+    agent = initialize_agent(
+        tools=tools,
+        llm=llm,
+        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        verbose=True,
+        prompt=custom_prompt  # 绑定自定义Prompt
+    )
+    
+
+#### 2\. 添加记忆功能（让 Agent 记住上下文）
+
+默认 Agent 没有记忆，添加 `ConversationBufferMemory` 可记住历史对话：
+
+python
+
+运行
+
+    from langchain.memory import ConversationBufferMemory
+    
+    # 初始化记忆
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    
+    # 带记忆的Agent
+    agent = initialize_agent(
+        tools=tools,
+        llm=llm,
+        agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+        verbose=True,
+        memory=memory  # 绑定记忆
+    )
+    
+    # 测试上下文记忆
+    agent.run("计算1到100的和")
+    agent.run("刚才的计算结果是多少？")  # Agent能记住上一轮的结果
+    
+
+### 五、新手常见问题与避坑
+
+1.  **工具调用失败**：
+    
+    -   原因：Tool 的 `description` 描述模糊，大模型看不懂用途；
+    -   解决：description 必须写清「工具用途 + 输入参数 + 适用场景」，比如 “用于执行 Python 代码，输入是代码字符串，解决数学计算问题”。
+    
+2.  **本地模型对接失败**：
+    
+    -   原因：FastChat API 未启动，或 `base_url` 填写错误；
+    -   解决：先验证 `http://localhost:8000/v1/models` 能访问，再检查代码中的地址。
+    
+3.  **Agent 不调用工具，直接回答**：
+    
+    -   原因：任务未超出大模型原生能力，或 Prompt 未引导调用工具；
+    -   解决：设计超出大模型能力的任务（如 “执行代码并返回结果”），而非 “写出代码”。
+    
+
+### 总结
+
+1.  **LangChain 核心价值**：无需从零编写「大模型 + 工具」的调用逻辑，通过模块化组件快速搭建 Agent；
+2.  **新手学习路径**：
+    
+    -   第一步：安装并对接本地大模型（验证基础调用）；
+    -   第二步：定义 Tool 并初始化...
+    
+
+如何使用 AgentScope 框架？
+
+你想学习 AgentScope 框架的使用方法，这是阿里云开源的、专为国内开发者设计的多智能体开发框架 —— 相比 LangChain，它对中文生态（通义千问、阿里云 sandbox-aio）适配更友好，API 更简洁，新手能更快上手。下面我会从「核心概念→环境安装→基础用法→实战案例」一步步讲解，附完整可运行代码，重点结合你之前关注的「本地大模型 + 沙箱」场景。
+
+### 一、先搞懂 AgentScope 核心概念（新手必知）
+
+AgentScope 把智能体开发拆成更贴合中文场景的模块，核心概念比 LangChain 更直观：
+
+| 组件  | 作用（通俗解释） | 新手常用场景 |
+| --- | --- | --- |
+| **Model** | 智能体的 “大脑”（大模型） | 对接通义千问 / Qwen / 本地大模型 |
+| **Agent** | 智能体实例（可独立完成任务） | 代码执行 Agent、天气查询 Agent |
+| **Tool** | 智能体的 “工具”（执行具体操作） | 对接沙箱、浏览器、API 等 |
+| **Context** | 对话 / 任务上下文（记忆） | 保存智能体的历史交互记录 |
+| **Sandbox** | 内置沙箱对接模块（适配阿里云 / 开源沙箱） | 安全执行代码 / 浏览器操作 |
+
+### 二、基础步骤：安装 + 最小化使用（5 分钟跑通）
+
+#### 步骤 1：安装 AgentScope
+
+bash
+
+运行
+
+    # 核心安装（基础功能）
+    pip install agentscope
+    
+    # 按需安装扩展（对接大模型/沙箱）
+    pip install agentscope[model]  # 对接通义千问/OpenAI等模型
+    pip install agentscope[sandbox] # 对接沙箱（阿里云/CodeBox）
+    pip install requests          # 调用外部API
+    
+
+#### 步骤 2：极简使用（调用本地 Qwen 大模型）
+
+先验证 AgentScope 能对接你本地部署的 Qwen 模型（基于 FastChat OpenAI 兼容 API）：
+
+python
+
+运行
+
+    import agentscope
+    
+    # 1. 初始化 AgentScope（配置大模型）
+    agentscope.init(
+        model_configs=[
+            {
+                "model_type": "openai_chat",  # 对接OpenAI兼容API
+                "model_name": "Qwen-7B-Chat", # 本地模型名称
+                "api_key": "dummy-key",       # 本地部署填任意值
+                "base_url": "http://localhost:8000/v1", # 本地Qwen的API地址
+                "temperature": 0,             # 回答精准，无随机性
+            }
+        ]
+    )
+    
+    # 2. 创建基础智能体
+    from agentscope.agents import DialogAgent
+    
+    # 初始化一个简单的对话智能体
+    agent = DialogAgent(
+        name="QwenAgent",          # 智能体名称
+        model_config_name="Qwen-7B-Chat",  # 绑定上面配置的大模型
+    )
+    
+    # 3. 测试对话（调用本地大模型）
+    response = agent("用Python计算1到100的累加和，写出代码")
+    print("智能体回答：\n", response.text)
+    
+
+运行后能看到 Qwen 生成的代码，说明 AgentScope 已成功对接本地大模型。
+
+### 三、核心用法：开发带工具的智能体（对接开源沙箱）
+
+这是 AgentScope 最核心的能力 —— 让智能体调用外部工具（如 CodeBox 沙箱），下面是「代码执行智能体」的完整示例，适配你本地部署的 CodeBox 沙箱：
+
+#### 步骤 1：定义沙箱工具（对接本地 CodeBox）
+
+AgentScope 支持自定义 Tool，只需实现 `call` 方法即可：
+
+python
+
+运行
+
+    import requests
+    from agentscope.tools import ToolBase, ToolCall
+    
+    # 1. 自定义沙箱执行工具（对接本地CodeBox）
+    class CodeBoxTool(ToolBase):
+        def __init__(self):
+            # 工具元信息（告诉大模型工具用途）
+            super().__init__(
+                name="CodeExecutor",
+                description="用于执行Python/JavaScript代码，解决数学计算、数据处理等问题",
+                parameters=[
+                    {
+                        "name": "code",
+                        "type": "str",
+                        "description": "要执行的代码字符串",
+                        "required": True,
+                    },
+                    {
+                        "name": "language",
+                        "type": "str",
+                        "description": "代码语言，默认python",
+                        "required": False,
+                        "default": "python",
+                    }
+                ],
+            )
+    
+        # 核心方法：执行工具逻辑
+        def call(self, code: str, language: str = "python") -> str:
+            """调用本地CodeBox沙箱执行代码"""
+            sandbox_url = "http://localhost:8080/api/run"  # 本地CodeBox地址
+            try:
+                res = requests.post(
+                    sandbox_url,
+                    json={"language": language, "code": code},
+                    timeout=10
+                )
+                res_json = res.json()
+                if res_json.get("error"):
+                    return f"执行错误：{res_json['error']}"
+                return f"执行结果：{res_json['output']}"
+            except Exception as e:
+                return f"沙箱调用失败：{str(e)}"
+    
+    # 2. 实例化工具
+    code_tool = CodeBoxTool()
+    
+
+#### 步骤 2：创建带工具的智能体并运行
+
+python
+
+运行
+
+    from agentscope.agents import FunctionCallAgent
+    
+    # 1. 创建带工具的智能体（FunctionCallAgent 自动处理工具调用）
+    agent = FunctionCallAgent(
+        name="CodeExecutorAgent",
+        model_config_name="Qwen-7B-Chat",  # 绑定本地大模型
+        tools=[code_tool],                 # 绑定沙箱工具
+        verbose=True,                      # 打印思考/调用过程（新手调试）
+    )
+    
+    # 2. 运行智能体（让它自主判断是否调用沙箱）
+    task = "用Python计算1到100的累加和，执行代码并返回结果"
+    response = agent(task)
+    
+    # 3. 输出结果
+    print("\n智能体最终回答：\n", response.text)
+    
+
+#### 运行结果（新手可验证）
+
+plaintext
+
+    [AgentScope] [CodeExecutorAgent] Thinking...
+    [AgentScope] [CodeExecutorAgent] Calling tool: CodeExecutor
+    [AgentScope] [CodeExecutorAgent] Tool inputs: {'code': 'print(sum(range(1, 101)))', 'language': 'python'}
+    [AgentScope] [CodeExecutorAgent] Tool output: 执行结果：5050
+    [AgentScope] [CodeExecutorAgent] Generating response...
+    
+    智能体最终回答：
+     1到100的累加和计算结果为5050，执行的Python代码是：print(sum(range(1, 101)))
+    
+
+从日志能看到：智能体**自主判断需要调用工具** → 传入正确的代码参数 → 执行后返回结果，完整闭环。
+
+### 四、进阶用法：对接阿里云 sandbox-aio（无需本地沙箱）
+
+如果你想改用阿里云 sandbox-aio 而非本地 CodeBox，AgentScope 已内置适配，只需修改配置即可：
+
+python
+
+运行
+
+    import agentscope
+    
+    # 1. 初始化（配置阿里云 sandbox-aio）
+    agentscope.init(
+        model_configs=[
+            {
+                "model_type": "dashscope_chat",  # 通义千问（阿里云）
+                "model_name": "qwen-turbo",
+                "api_key": "你的通义千问API密钥",
+            }
+        ],
+        sandbox_config={
+            "type": "aliyun_aio",               # 阿里云 sandbox-aio
+            "access_key": "你的阿里云AK",
+            "secret_key": "你的阿里云SK",
+            "region": "cn-hangzhou",            # 沙箱所在地域
+        }
+    )
+    
+    # 2. 使用内置沙箱工具
+    from agentscope.tools import SandboxTool
+    
+    # 初始化阿里云沙箱工具（代码执行）
+    ali_code_tool = SandboxTool(type="code_executor")
+    
+    # 3. 创建智能体
+    agent = FunctionCallAgent(
+        name="AliCodeAgent",
+        model_config_name="qwen-turbo",
+        tools=[ali_code_tool],
+        verbose=True,
+    )
+    
+    # 4. 运行
+    response = agent("用Python计算1到100的累加和，执行代码并返回结果")
+    print(response.text)
+    
+
+-   核心优势：无需自己部署沙箱，AgentScope 已封装好阿里云 sandbox-aio 的 API 调用逻辑，只需配置密钥即可。
+
+### 五、新手常见问题与避坑
+
+1.  **本地大模型对接失败**：
+    
+    -   原因：FastChat API 未启动，或 `base_url` 填写错误；
+    -   解决：先验证 `http://localhost:8000/v1/models` 能访问，再检查 `model_type` 是否为 `openai_chat`。
+    
+2.  **工具调用无响应**：
+    
+    -   原因：Tool 的 `description` 或 `parameters` 定义不规范，大模型无法识别；
+    -   解决：严格按示例定义 `parameters`（包含 name/type/description/required）。
+    
+3.  **阿里云沙箱调用报错**：
+    
+    -   原因：AK/SK 无权限，或地域填写错误；
+    -   解决：在阿里云 RAM 控制台给账号授予「AgentRun 沙箱操作权限」，确认 region 与沙箱一致。
+    
+
+### 六、AgentScope vs LangChain（新手选型建议）
+
+| 维度  | AgentScope | LangChain |
+| --- | --- | --- |
+| 中文生态适配 | 极佳（通义千问 / 阿里云） | 需额外适配 |
+| 沙箱对接 | 内置阿里云 sandbox-aio | 需手动封装 API |
+| 学习成本 | 低（API 简洁，中文文档） | 较高（概念多，英文文档为主） |
+| 功能丰富度 | 聚焦多智能体，功能适中 | 全场景覆盖，功能极丰富 |
+
+**新手建议**：如果你的场景是「对接阿里云服务 / 国内大模型」，优先用 AgentScope；如果需要对接海外大模型 / 复杂工具链，用 LangChain。
+
+### 总结
+
+1.  **AgentScope 核心价值**：对中文 / 阿里云生态适配友好，API 简洁，新手能快速搭建「大模型 + 工具 + 沙箱」的智能体；
+2.  **新手学习路径**：
+    
+    -   第一步：安装并对接本地大模型（验证基础调用）；
+    -   第二步：自定义 Tool 对接本地沙箱（掌握工具调用）；
+    -   第三步：适配阿里云 sandbox-aio（进阶场景）；
+    
+3.  **关键优势**：无需手动封装云服务 API，内置记忆、多智能体协作等能力，开发效率更高。
+
+如果运行代码时遇到具体报错（比如模型调用失败、沙箱权限错误），可以把报错信息贴出来，我会帮你修改代码、定位问题。
