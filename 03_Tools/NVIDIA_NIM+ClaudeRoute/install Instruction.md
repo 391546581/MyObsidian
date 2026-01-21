@@ -44,6 +44,7 @@ Then, install Claude Code Router:
 npm install -g @musistudio/claude-code-router
 
 >ccr ui 启动界面
+ccr start 启动服务
 
  z-ai/glm4.7  minimaxai/minimax-m2.1
 ![alt text](image.png)
@@ -62,3 +63,34 @@ ANTHROPIC_BASE_URL=http://localhost:3456
 ANTHROPIC_API_KEY：自定义的密钥（无需真实 Anthropic 密钥），用于路由服务的鉴权；
 
 目标模型服务商的密钥（如 DeepSeek API Key、Gemini API Key 等），需配置到 claude-code-router 的配置文件中,在web界面配置即可
+
+5. 第五步：配置Claude Code for VS Code 可选插件
+Claude Code for VS Code 是一个为 VS Code 设计的插件，用于与 Claude Code 服务交互。该插件提供了以下功能：
+代码补全：基于 Claude Code 模型的智能代码补全功能，帮助开发者快速编写代码。
+代码解释：提供代码解释功能，帮助开发者理解代码的含义。
+代码调试：支持代码调试功能，帮助开发者快速定位和修复问题。
+
+set Claude Code for VS Code 插件配置
+    "claudeCode.apiKey": "123456", 
+    "claudeCode.baseUrl": "http://127.0.0.1:3456"
+
+{
+    "remote.SSH.remotePlatform": {
+        "localhost": "linux",
+        "dev-env": "linux",
+        "wsl": "linux"
+    },    
+    "redhat.telemetry.enabled": true,
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "dev.containers.dockerPath": "podman",
+    "git.openRepositoryInParentFolders": "never",
+    "claudeCode.preferredLocation": "panel",
+    "claudeCode.environmentVariables": [
+            
+    ],
+    "claudeCode.apiKey": "123456", 
+    "claudeCode.baseUrl": "http://127.0.0.1:3456"
+  
+}
