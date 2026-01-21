@@ -94,3 +94,51 @@ set Claude Code for VS Code 插件配置
     "claudeCode.baseUrl": "http://127.0.0.1:3456"
   
 }
+
+
+装 claude-session-manager 工具，通过 UI 批量管理 / 删除会话：
+bash
+运行
+npm install -g @bhala-srinivash/claude-session-manager
+claude-session-manager  # 浏览器打开管理界面
+
+使用了claude-session-manager # 浏览器打开管理界面 清理回话后，vscode插件打开提示，Error loading webview: Error: Could not register service worker: InvalidStateError: Failed to register a ServiceWorker: The document is in an invalid state..
+
+你在使用 `claude-session-manager` 清理会话后，VS Code Claude Code 插件出现「Could not register service worker」错误，核心原因是**插件的 Service Worker 缓存 / 注册状态被清理操作破坏**（Service Worker 是插件 Webview 面板的核心依赖）。下面是分步修复方案，适配 Windows 系统，能快速恢复插件正常运行：
+
+### 一、错误本质：Service Worker 注册失败
+
+VS Code 插件的 Webview 面板依赖浏览器级别的 Service Worker 来管理会话、缓存和通信，`claude-session-manager` 清理会话时可能误删了 Service Worker 的注册文件 / 状态，导致插件打开 Webview 时无法完成 Service Worker 注册，最终面板加载失败。
+
+### 二、分步修复（按优先级，从简单到彻底）
+
+#### 步骤 1：重启 VS Code + 清除 Webview 缓存（最快见效）
+
+1.  **完全关闭 VS Code**：不仅关闭窗口，还要在任务管理器结束所有 `Code.exe` 进程（避免后台进程残留）；
+2.  **清除 VS Code Webview 全局缓存**：
+    
+    -   打开文件资源管理器，进入路径：
+        
+        plaintext
+        
+            C:\Users\Administrator\AppData\Roaming\Code\Cache\webviews
+            
+        
+    -   删除该目录下的**所有文件 / 文件夹**（这些是 Webview 的缓存，删除后 VS Code 会自动重建）；
+    
+3.  **以管理员身份重启 VS Code**，尝试打开 Claude Code 插件面板。
+
+#### 步骤 2：重置 Claude Code 插件的 Service Worker 注册
+
+若步骤 1 无效，手动触发插件重新注册 Service Worker：
+
+1.  打开 VS Code，按 `Ctrl+Shift+P` 打开命令面板；
+2.  输入并执行以下命令（按顺序）：
+    
+    -   `Developer: Reload Window`（重启窗口）；
+    -   `Developer: Open Webview Developer Tools`（打开 Webview 调试工具）；
+    -   在弹出的调试工具中，切换到「Application」→「Service Workers」；
+    -   找到 Claude Code 插件对应的 Service Worker，点击「Unregister」注销；
+    -   关闭调试工具，再次执行 `Developer: Reload Window`；
+    
+3.  重新打开插件面板，此时插件会重新注册 Service Worker。
