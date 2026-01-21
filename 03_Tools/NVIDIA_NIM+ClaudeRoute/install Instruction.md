@@ -47,6 +47,7 @@ npm install -g @musistudio/claude-code-router
 
  z-ai/glm4.7  minimaxai/minimax-m2.1
 ![alt text](image.png)
+https://integrate.api.nvcf.nvidia.com
 
 ![alt text](image-1.png)
 
