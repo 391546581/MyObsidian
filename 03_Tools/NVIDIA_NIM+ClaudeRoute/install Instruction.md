@@ -34,7 +34,18 @@ ANTHROPIC_API_KEY：自定义的密钥（无需真实 Anthropic 密钥），用�
 目标模型服务商的密钥（如 DeepSeek API Key、Gemini API Key 等），需配置到 claude-code-router 的配置文件中。
 
 
-4. 第四步：配置 claude-code-router 工具   z-ai/glm4.7  minimaxai/minimax-m2.1
+4. 第四步：配置 claude-code-router 工具  
+
+
+First, ensure you have Claude Code installed:
+npm install -g @anthropic-ai/claude-code
+
+Then, install Claude Code Router:
+npm install -g @musistudio/claude-code-router
+
+>ccr ui 启动界面
+
+ z-ai/glm4.7  minimaxai/minimax-m2.1
 ![alt text](image.png)
 
 ![alt text](image-1.png)
@@ -42,3 +53,11 @@ ANTHROPIC_API_KEY：自定义的密钥（无需真实 Anthropic 密钥），用�
 ![alt text](image-2.png)
 
 ![alt text](image-3.png)
+
+
+配置 claude-code-router 的环境变量
+![alt text](image-4.png)
+ANTHROPIC_BASE_URL=http://localhost:3456
+ANTHROPIC_API_KEY：自定义的密钥（无需真实 Anthropic 密钥），用于路由服务的鉴权；
+
+目标模型服务商的密钥（如 DeepSeek API Key、Gemini API Key 等），需配置到 claude-code-router 的配置文件中,在web界面配置即可
