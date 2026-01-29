@@ -22,6 +22,9 @@ jobs:
     name: Build Application
     runs-on: windows-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -45,23 +48,43 @@ jobs:
           $icon = "${{ github.event.inputs.icon }}"
           $params = "${{ github.event.inputs.additional_params }}"
           
-          $command = "pake $url --name $name"
+          # Create output directory to ensure we know where the file is
+          New-Item -ItemType Directory -Force -Path "./output"
+          
+          $command = "pake $url --name $name --out ./output"
           if ($icon) { $command += " --icon $icon" }
           if ($params) { $command += " $params" }
           
           Write-Host "Running command: $command"
           Invoke-Expression $command
 
-      - name: List Files (Debug)
+      - name: Generate Tag Name
+        id: tag
         shell: pwsh
         run: |
-          Get-ChildItem -Recurse -Include *.exe, *.msi
+          $val = "${{ github.event.inputs.name }}" -replace '\s+','-'
+          $date = Get-Date -Format "yyyyMMdd-HHmm"
+          echo "tag=build-$val-$date" >> $env:GITHUB_OUTPUT
 
-      - name: Find and Upload EXE
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Build Result - ${{ github.event.inputs.name }}
+          body: |
+            Automated Pake Build
+            - **URL:** ${{ github.event.inputs.url }}
+            - **App Name:** ${{ github.event.inputs.name }}
+            - **Build Date:** ${{ steps.tag.outputs.date }}
+          files: |
+            output/*.exe
+            output/*.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find and Upload Artifacts (Fallback)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.name }}-Windows-App
-          path: |
-            **/*.exe
-            **/*.msi
-          if-no-files-found: error
+          path: output/
+
