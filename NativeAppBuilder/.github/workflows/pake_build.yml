@@ -1,0 +1,62 @@
+name: Build Pake App
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'The URL of the website to package'
+        required: true
+        default: 'https://github.com'
+      name:
+        description: 'The name of the application'
+        required: true
+        default: 'GitHub'
+      icon:
+        description: 'URL to the icon (optional)'
+        required: false
+      additional_params:
+        description: 'Additional Pake CLI parameters (e.g., --width 1200 --height 800)'
+        required: false
+
+jobs:
+  build:
+    name: Build Application
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Pake CLI
+        run: npm install -g pake-cli
+
+      - name: Build App with Pake
+        shell: pwsh
+        run: |
+          $url = "${{ github.event.inputs.url }}"
+          $name = "${{ github.event.inputs.name }}"
+          $icon = "${{ github.event.inputs.icon }}"
+          $params = "${{ github.event.inputs.additional_params }}"
+          
+          $command = "pake $url --name $name"
+          if ($icon) { $command += " --icon $icon" }
+          if ($params) { $command += " $params" }
+          
+          Write-Host "Running command: $command"
+          Invoke-Expression $command
+
+      - name: Find and Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.name }}-Windows-App
+          path: |
+            ./*.exe
+            ./output/*.exe
+          if-no-files-found: error
