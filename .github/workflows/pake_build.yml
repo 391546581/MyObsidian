@@ -29,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -52,11 +52,16 @@ jobs:
           Write-Host "Running command: $command"
           Invoke-Expression $command
 
+      - name: List Files (Debug)
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Include *.exe, *.msi
+
       - name: Find and Upload EXE
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.name }}-Windows-App
           path: |
-            ./*.exe
-            ./output/*.exe
+            **/*.exe
+            **/*.msi
           if-no-files-found: error

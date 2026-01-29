@@ -1,4 +1,6 @@
+资源管理器--rust
 >winget install neohtop
+
 
 winget install --id Rustlang.Rustup
 需要本地安装才能正确执行，避免serverbay这种切换安装
