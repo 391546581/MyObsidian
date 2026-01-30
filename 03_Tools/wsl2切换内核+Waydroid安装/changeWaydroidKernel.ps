@@ -1,0 +1,14 @@
+$kernelUrl = "https://github.com/gingerbread-man/WSL2-Linux-Kernel-Waydroid/releases/latest/download/bzImage"
+$installDir = "D:\WSL\Kernel"
+$wslConfigFile = "$env:USERPROFILE\.wslconfig"
+if (!(Test-Path $installDir)) { New-Item -ItemType Directory -Path $installDir }
+Write-Host "正在从 GitHub 下载支持 Waydroid 的内核..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $kernelUrl -OutFile "$installDir\bzImage"
+$configContent = @"
+[wsl2]
+kernel=$($installDir.Replace('\','\\'))\\bzImage
+"@
+Set-Content -Path $wslConfigFile -Value $configContent
+Write-Host "内核配完成，正在关闭 WSL 以应用更改..." -ForegroundColor Yellow
+wsl --shutdown
+Write-Host "一切就绪！请重新打开 Ubuntu 终端执行下一步脚本。" -ForegroundColor Green
