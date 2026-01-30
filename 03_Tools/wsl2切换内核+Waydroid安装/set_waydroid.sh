@@ -14,6 +14,13 @@ sudo apt install waydroid -y
 # 3. 解决网络转发问题
 echo "配置网络转发..."
 sudo sysctl -w net.ipv4.ip_forward=1
+
+# 自动修复 iptables 兼容性
+sudo update-alternatives --set iptables /usr/sbin/iptables-legacy > /dev/null 2>&1
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy > /dev/null 2>&1
+
+# 此时再执行网络转发就不会报错了
+
 sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 sudo iptables -A FORWARD -i waydroid0 -j ACCEPT
 # 确保重启后依然生效

@@ -20,6 +20,8 @@ Set-Content -Path $wslConfigFile -Value $configContent
 Write-Host "内核配完成，正在关闭 WSL 以应用更改..." -ForegroundColor Yellow
 wsl --shutdown
 Write-Host "一切就绪！请重新打开 Ubuntu 终端执行下一步脚本。" -ForegroundColor Green
+
+
 第二部分：WSL 侧全自动配置脚本 (Bash)
 将以下脚本保存为 set_waydroid.sh，并在 Ubuntu 中运行 bash set_waydroid.sh。
 
