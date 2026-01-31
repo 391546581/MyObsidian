@@ -72,3 +72,26 @@ bash
 pm clear com.google.android.gsf
 pm clear com.android.vending
 exit
+
+
+解决网络联通问题
+
+第一步：进入安卓内部
+在 Ubuntu 终端输入：
+
+bash
+sudo waydroid shell
+（看到提示符变成 :/ # 后再进行下一步）
+
+第二步：在安卓内部执行配置（直接输入，不要带引号）
+请在 :/ # 后面逐行输入并点回车：
+
+bash
+# 1. 关闭邪魔的“私人 DNS”
+settings put global private_dns_mode off
+# 2. 设置系统 DNS 属性
+setprop net.eth0.dns1 8.8.8.8
+setprop net.eth0.dns2 114.114.114.114
+setprop net.dns1 8.8.8.8
+# 3. 检查网络连通性
+ping -c 3 110.242.68.3
