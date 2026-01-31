@@ -47,7 +47,7 @@ cd ~/waydroid_script
 ./venv/bin/python3 main.py cert
 它会自动输出一串链接，点击链接跳转后直接点“注册”即可。
 
-实际执行的是：./venv/bin/python3 main.py certified
+实际执行的是：sudo ./venv/bin/python3 main.py certified
 
 恭喜！ 注册完成后，你就能像使用真实的安卓手机一样，从 Play 商店下载各种 App 了。你现在对 Waydroid 的性能体感如何？
 
@@ -95,3 +95,13 @@ setprop net.eth0.dns2 114.114.114.114
 setprop net.dns1 8.8.8.8
 # 3. 检查网络连通性
 ping -c 3 110.242.68.3
+
+
+
+修复网桥问题
+# 保存为 start_net.sh
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo /usr/lib/waydroid/data/scripts/waydroid-net.sh stop || true
+sudo /usr/lib/waydroid/data/scripts/waydroid-net.sh start
+sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+sudo iptables -A FORWARD -i waydroid0 -j ACCEPT

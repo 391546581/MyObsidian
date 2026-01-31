@@ -68,6 +68,8 @@ sudo ./venv/bin/python3 main.py install magisk
 echo "=== 配置完成！ ==="
 echo "请运行: sudo systemctl start waydroid-container"
 echo "然后运行: waydroid show-full-ui"
+
+
 3. 特别说明与避坑
 关于 GPU：WSL2 里的 Waydroid 默认就能通过 mesa 库调用 Windows 的 GPU。如果你发现黑屏，请尝试在界面启动前运行 export WAYLAND_DISPLAY=wayland-0。
 关于 Google 框架：安装完 GApps 后，第一次启动通常会提示“此设备未获 Google 认证”。你可以使用脚本里的工具（或搜索 Waydroid ID 注册）来解决，通常 waydroid_script 会自动帮你输出需要注册的 ID。
